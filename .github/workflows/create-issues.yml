@@ -129,42 +129,79 @@ jobs:
               return header + withoutTitle;
             }
 
-            // Get input parameters
-            const createAll = context.payload.inputs.create_all === 'true';
+            // Get input parameters  
+            console.log('Raw inputs:', context.payload.inputs);
+            const createAll = context.payload.inputs.create_all === true || context.payload.inputs.create_all === 'true';
+            console.log('Create all flag:', createAll);
+            
             const issueNumbers = context.payload.inputs.issue_numbers ? 
               context.payload.inputs.issue_numbers.split(',').map(n => n.trim().padStart(2, '0')) : [];
+            console.log('Issue numbers:', issueNumbers);
 
             // Determine which issues to create
             let issuesToCreate = [];
             if (createAll) {
               issuesToCreate = Object.keys(issueMetadata);
+              console.log('Creating all issues:', issuesToCreate);
             } else if (issueNumbers.length > 0) {
               issuesToCreate = issueNumbers.filter(num => issueMetadata[num]);
+              console.log('Creating selected issues:', issuesToCreate);
             } else {
-              console.log('No issues specified to create');
+              console.log('No issues specified to create - inputs were:', {
+                create_all: context.payload.inputs.create_all,
+                issue_numbers: context.payload.inputs.issue_numbers
+              });
               return;
             }
 
-            console.log(`Creating issues: ${issuesToCreate.join(', ')}`);
+            if (issuesToCreate.length === 0) {
+              console.log('⚠️ No issues to create. Exiting.');
+              return;
+            }
+
+            console.log(`📋 Creating ${issuesToCreate.length} issues: ${issuesToCreate.join(', ')}`);
+
+            // Check if issues directory exists
+            console.log('Current working directory:', process.cwd());
+            console.log('Directory contents:', fs.readdirSync('.'));
+            
+            if (!fs.existsSync('issues')) {
+              console.error('❌ Issues directory not found!');
+              return;
+            }
+            
+            const issuesDir = 'issues';
+            const allFiles = fs.readdirSync(issuesDir);
+            console.log('Files in issues directory:', allFiles);
 
             // Create issues
             for (const issueNum of issuesToCreate) {
               try {
-                const filePath = `issues/${issueNum}_*.md`;
-                const issuesDir = 'issues';
-                const files = fs.readdirSync(issuesDir);
-                const matchingFile = files.find(file => file.startsWith(`${issueNum}_`));
+                console.log(`\n🔄 Processing issue ${issueNum}...`);
+                
+                const matchingFile = allFiles.find(file => file.startsWith(`${issueNum}_`));
+                console.log(`Looking for files starting with "${issueNum}_"...`);
+                console.log(`Found matching file: ${matchingFile}`);
                 
                 if (!matchingFile) {
-                  console.log(`File not found for issue ${issueNum}`);
+                  console.log(`❌ File not found for issue ${issueNum}`);
+                  console.log(`Available files: ${allFiles.join(', ')}`);
                   continue;
                 }
 
                 const fullPath = path.join(issuesDir, matchingFile);
+                console.log(`Reading file: ${fullPath}`);
+                
                 const content = fs.readFileSync(fullPath, 'utf8');
+                console.log(`File content length: ${content.length} characters`);
+                
                 const metadata = issueMetadata[issueNum];
+                console.log(`Using metadata:`, metadata);
                 
                 const issueBody = convertMarkdownToIssueBody(content);
+                console.log(`Generated issue body length: ${issueBody.length} characters`);
+                
+                console.log(`Creating issue with title: "${metadata.title}"`);
                 
                 const issue = await github.rest.issues.create({
                   owner: context.repo.owner,
@@ -176,15 +213,29 @@ jobs:
                   milestone: metadata.milestone
                 });
 
-                console.log(`✅ Created issue #${issue.data.number}: ${metadata.title}`);
+                console.log(`✅ Successfully created issue #${issue.data.number}: ${metadata.title}`);
+                console.log(`Issue URL: ${issue.data.html_url}`);
                 
                 // Add a small delay to avoid rate limiting
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
               } catch (error) {
-                console.error(`❌ Failed to create issue ${issueNum}:`, error.message);
+                console.error(`❌ Failed to create issue ${issueNum}:`);
+                console.error(`Error message: ${error.message}`);
+                console.error(`Error stack: ${error.stack}`);
+                if (error.response) {
+                  console.error(`Response status: ${error.response.status}`);
+                  console.error(`Response data:`, error.response.data);
+                }
               }
             }
+            
+            console.log(`\n🎉 Issue creation process completed!`);
+            console.log(`📊 Summary:`);
+            console.log(`- Attempted to create: ${issuesToCreate.length} issues`);
+            console.log(`- Issues requested: ${issuesToCreate.join(', ')}`);
+            console.log(`\n💡 Check the Issues tab to see created issues.`);
+            console.log(`🔍 If no issues were created, check the error messages above.`);
 
       - name: Create Project Board (if not exists)
         uses: actions/github-script@v7

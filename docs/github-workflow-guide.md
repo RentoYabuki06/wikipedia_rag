@@ -90,6 +90,80 @@
 3. **レート制限**: GitHub APIのレート制限を避けるため、Issue作成間に1秒の遅延があります
 4. **エラー処理**: 個別のIssue作成に失敗してもワークフローは継続します
 
+## 🐛 トラブルシューティング
+
+### Issueが生成されない場合
+
+#### 1. デバッグワークフローの実行
+```
+Actions → Debug Issue Creation → Run workflow
+```
+これにより環境情報と権限が確認できます。
+
+#### 2. よくある原因と解決方法
+
+**❌ 「Create all issues at once」をチェックし忘れ**
+- 解決方法: ワークフロー実行時に必ずチェックボックスを有効にする
+
+**❌ ファイルが見つからない**
+```
+Error: File not found for issue XX
+```
+- 解決方法: `issues/` ディレクトリに必要なファイルがあるか確認
+
+**❌ 権限エラー**
+```  
+Error: Resource not accessible by integration
+```
+- 解決方法: リポジトリ設定でActions権限を確認
+  - Settings → Actions → General → Workflow permissions
+  - "Read and write permissions" を選択
+
+**❌ APIレート制限**
+```
+Error: API rate limit exceeded
+```
+- 解決方法: 少し時間を置いてから再実行
+
+#### 3. ワークフロー実行ログの確認方法
+
+1. **Actions** タブ → 最新の実行を選択
+2. **Create GitHub Issues** ジョブを展開  
+3. ログでエラーメッセージを確認
+4. 赤い ❌ マークがある箇所を重点的にチェック
+
+#### 4. 手動での確認項目
+
+**ファイル存在確認**
+```bash
+ls -la issues/
+# 01_project_setup.md から 12_integration_testing.md があるか確認
+```
+
+**権限確認**
+- リポジトリのSettingsでActionsの権限が適切に設定されているか
+- Personal Access Tokenなどは不要（GitHub Actionsの標準権限で動作）
+
+#### 5. 代替手順
+
+どうしても自動作成が動作しない場合：
+
+1. **手動でIssue作成**
+   ```bash
+   # 各 issues/*.md ファイルの内容を手動でコピー&ペースト
+   ```
+
+2. **一つずつ作成**
+   ```
+   Actions → Convert Issues → Run workflow
+   Specific issue numbers: "01"
+   ```
+
+3. **GitHub CLI使用**
+   ```bash
+   gh issue create --title "タイトル" --body-file issues/01_project_setup.md
+   ```
+
 ## 📝 Issue フォーマット
 
 各Issueは以下の形式で作成されます：
