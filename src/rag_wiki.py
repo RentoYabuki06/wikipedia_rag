@@ -9,7 +9,7 @@ from embedder import E5Embedder
 from vector_store import FAISSVectorStore
 from reranker import BGEReranker
 from generator import QwenGenerator
-from config import DEFAULT_GENERATOR_MODEL, DEFAULT_ARTIFACTS_DIR, DEFAULT_TOP_K, DEFAULT_TOP_N
+from config import DEFAULT_GENERATOR_MODEL, DEFAULT_ARTIFACTS_DIR, DEFAULT_TOP_K, DEFAULT_TOP_N, USE_RERANKER
 
 
 class WikiRAG:
@@ -70,7 +70,7 @@ class WikiRAG:
         logging.info(f"Loaded {len(self.metadata)} metadata records")
 
     def search_and_generate(
-        self, question: str, top_k: int = DEFAULT_TOP_K, top_n: int = DEFAULT_TOP_N, use_rerank: bool = True
+        self, question: str, top_k: int = DEFAULT_TOP_K, top_n: int = DEFAULT_TOP_N, use_rerank: bool = USE_RERANKER
     ) -> Dict[str, Any]:
         """質問に対する回答を生成"""
         try:
